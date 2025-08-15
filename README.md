@@ -530,3 +530,98 @@ The integrated **Security & Access Control framework** in the Agent ensures:
 - Centralized session and permission management.
 
 This combination provides enterprise-grade security while remaining modular and extendable for different deployment environments.
+
+
+## 🤖 LLM Integration – Prompt Builder & LLM Adapter
+
+_The Agent integrates with LLMs (e.g., GPT-4o, Mistral) via a flexible adapter and hybrid prompt builder, enabling structured command generation or natural text responses._
+
+---
+
+### 🔍 Core Purpose
+
+The LLM integration layer provides:
+
+- **Structured Command Generation** – Returns strictly valid JSON commands based on a defined schema for tools like `FileTool` and `SystemTool`.
+- **Natural Language Responses** – If the user input is conversational, returns plain text instead of JSON.
+- **Hybrid Prompt Logic** – Adapts format and rules depending on the type of request.
+- **Backend Flexibility** – Works with OpenAI GPT-4o, Mistral, or other API-compatible models.
+
+---
+
+### 🔧 Architecture Overview
+
+1. **Prompt Construction** (`prompt_builder.py`)  
+   - Builds system prompts with **dual-mode** behavior:
+     - **Command Mode** – Forces JSON output matching the provided schema.
+     - **Conversation Mode** – Allows freeform natural text.
+   - Injects language constraints (English-only keys).
+   - Configurable style, output format, and instruction mode.
+
+2. **LLM Communication** (`llm_adapter.py`)  
+   - Wraps LLM API calls with a **unified async interface**.
+   - Supports both **string prompts** and **structured messages[]** format.
+   - Passes JSON tool schemas to the model for `function_call` responses.
+   - Handles both function call outputs and plain text replies.
+   - Implements **error handling** and fallback responses.
+
+3. **Utility Support** (`utils.py`)  
+   - Normalizes and expands user paths (`~` → home directory).
+   - Ensures consistent path format across platforms before sending to tools.
+
+---
+
+### 📦 Key Components
+
+- **`build_prompt(task, output_format, language, style, instruction_mode)`**  
+  Builds the complete system + user prompt string, embedding JSON schema rules for command mode.
+
+- **`LLMAdapter`**  
+  - **`send(messages)`** – Sends prompt/messages to the LLM API.  
+  - **`chat(prompt)`** – Simplified wrapper for single string prompts.  
+  - **`is_online()`** – Quick health check for LLM availability.  
+
+- **Schemas**  
+  - `file_tool_schema` – JSON schema for file operations.
+  - `system_tool_schema` – JSON schema for system operations.
+
+---
+
+### 📊 Response Types
+
+- **Function Call**  
+  - Returned when the LLM detects a tool operation.
+  - Output includes `name` (tool) and `arguments` (JSON object).
+- **Text**  
+  - Returned for conversational input or non-command responses.
+
+---
+
+### 🛡 Safety & Constraints
+
+- **Strict Schema Enforcement** – Commands must match the defined JSON schema exactly.
+- **No Mixed Formats** – Either JSON object or plain text, never both.
+- **Fallback Handling** – Unknown commands return a predefined `{"operation":"unknown",...}` JSON.
+- **Error Logging** – All API errors and JSON parse issues are logged.
+
+---
+
+### 🔄 Example – Command Mode
+
+**User:**  
+
+**LLM Response:**  
+```json
+{
+  "operation": "list",
+  "target": "C:/Projects",
+  "destination": "",
+  "options": {}
+}
+
+💬 Example – Conversation Mode
+
+User:
+Hi, how are you?
+LLM Response:
+I'm doing well! How can I help you today?
